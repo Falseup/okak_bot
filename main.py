@@ -1,11 +1,14 @@
+import asyncio
 import logging
 import os
 import random
 from pathlib import Path
 from typing import List, Set
 
-from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from aiogram import Bot, Dispatcher, F
+from aiogram.enums import ChatType
+from aiogram.types import Message
+from config import BOT_TOKEN
 
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
@@ -40,8 +43,8 @@ def load_special_phrases() -> List[str]:
     return phrases or FALLBACK_SPECIAL_PHRASES
 
 
-def normalize_username(update: Update) -> str:
-    user = update.effective_user
+def normalize_username(message: Message) -> str:
+    user = message.from_user
     if not user:
         return ""
     if user.username:
@@ -49,16 +52,16 @@ def normalize_username(update: Update) -> str:
     return str(user.id)
 
 
-def message_contains_trigger(update: Update) -> bool:
-    text = (update.message.text or "").casefold()
+def message_contains_trigger(message: Message) -> bool:
+    text = (message.text or "").casefold()
     return TRIGGER in text
 
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not update.message or not message_contains_trigger(update):
+async def handle_message(message: Message) -> None:
+    if not message_contains_trigger(message):
         return
 
-    username = normalize_username(update)
+    username = normalize_username(message)
     ignored_users = load_ignored_users()
     if username in ignored_users:
         logging.debug("Skip reply: %s in ignored list", username)
@@ -74,25 +77,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             return
         phrase = TRIGGER
 
-    await update.message.reply_text(phrase)
+    await message.reply(phrase)
 
 
-def main() -> None:
+async def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    if not token:
-        raise RuntimeError("Set TELEGRAM_BOT_TOKEN environment variable.")
+    if not BOT_TOKEN or BOT_TOKEN == "PASTE_YOUR_TOKEN_HERE":
+        raise RuntimeError("Укажите реальный токен в файле config.py")
 
-    application = ApplicationBuilder().token(token).build()
-    application.add_handler(
-        MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message)
+    bot = Bot(token=BOT_TOKEN)
+    dp = Dispatcher()
+    dp.message.register(
+        handle_message,
+        F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}),
+        F.text,
     )
+
     logging.info("Bot started")
-    application.run_polling(close_loop=False)
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
