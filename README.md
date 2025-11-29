@@ -9,9 +9,7 @@
 - Установите зависимости: `pip install -r requirements.txt`
 - Создайте бота через [@BotFather](https://t.me/BotFather)
 - Откройте `config.py` и впишите токен в переменную `BOT_TOKEN`
-- Заполните файлы в каталоге `data/`
-  - `ignored_users.txt` — юзернеймы или ID, бот молчит
-  - `special_users.txt` — всегда получают ответ
+- Заполните файл в каталоге `data/`
   - `special_phrases.txt` — фразы для особых пользователей
 
 ### Запуск
