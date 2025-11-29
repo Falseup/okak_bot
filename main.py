@@ -52,15 +52,7 @@ def normalize_username(message: Message) -> str:
     return str(user.id)
 
 
-def message_contains_trigger(message: Message) -> bool:
-    text = (message.text or "").casefold()
-    return TRIGGER in text
-
-
 async def handle_message(message: Message) -> None:
-    if not message_contains_trigger(message):
-        return
-
     username = normalize_username(message)
     ignored_users = load_ignored_users()
     if username in ignored_users:
@@ -85,16 +77,13 @@ async def main() -> None:
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    if not BOT_TOKEN or BOT_TOKEN == "PASTE_YOUR_TOKEN_HERE":
+    if not BOT_TOKEN:
         raise RuntimeError("Укажите реальный токен в файле config.py")
 
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
-    dp.message.register(
-        handle_message,
-        F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}),
-        F.text,
-    )
+    # Обрабатываем любые текстовые сообщения во всех чатах
+    dp.message.register(handle_message, F.text)
 
     logging.info("Bot started")
     await dp.start_polling(bot)
