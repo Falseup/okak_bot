@@ -5,7 +5,7 @@ import random
 from pathlib import Path
 from typing import List, Set
 
-from aiogram import Bot, Dispatcher, F
+from aiogram import Bot, Dispatcher
 from aiogram.enums import ChatType
 from aiogram.types import Message
 from config import BOT_TOKEN
@@ -15,13 +15,15 @@ DATA_DIR = BASE_DIR / "data"
 SPECIAL_PHRASES_FILE = DATA_DIR / "special_phrases.txt"
 FALLBACK_SPECIAL_PHRASES = ["окак-патруль подлетает"]
 TRIGGER = "окак"
-RESPONSE_CHANCE = 0.15
+RESPONSE_CHANCE = 0.10
+# Шанс ответа специальным пользователям на любые сообщения (фото, текст и т.д.)
+RESPONSE_CHANCE2 = 0.50
 
 # Список игнорируемых пользователей (юзернеймы или ID)
 IGNORED_USERS: List[str] = []
 
 # Список специальных пользователей (всегда получают ответ)
-SPECIAL_USERS: List[str] = []
+SPECIAL_USERS: List[str] = ["@Yvfukg"]
 
 
 def _read_list(path: Path) -> List[str]:
@@ -68,8 +70,13 @@ async def handle_message(message: Message) -> None:
         return
 
     if username in special_users:
+        if random.random() >= RESPONSE_CHANCE2:
+            return
         phrase = random.choice(special_phrases)
     else:
+        # Обычным пользователям отвечаем только на текстовые сообщения
+        if not message.text:
+            return
         if random.random() >= RESPONSE_CHANCE:
             return
         phrase = TRIGGER
@@ -87,8 +94,8 @@ async def main() -> None:
 
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
-    # Обрабатываем любые текстовые сообщения во всех чатах
-    dp.message.register(handle_message, F.text)
+    # Обрабатываем любые сообщения (текст, фото и т.д.) — SPECIAL_USERS получают ответ на всё, остальные только на текст
+    dp.message.register(handle_message)
 
     await dp.start_polling(bot)
 
